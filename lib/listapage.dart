@@ -67,7 +67,6 @@ class _ListaPageState extends State<ListaPage> {
     marcaCtrl.clear();
     valorCtrl.clear();
     quantidadeCtrl.clear();
-    salvarListaAtual();
   }
 
   void removerItem(int index) {
@@ -80,8 +79,6 @@ class _ListaPageState extends State<ListaPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Item "${item['produto']}" removido')),
     );
-
-    salvarListaAtual();
   }
 
   void editarItem(int index) {
@@ -157,7 +154,6 @@ class _ListaPageState extends State<ListaPage> {
               });
 
               Navigator.pop(context);
-              salvarListaAtual();
               produtoCtrl.clear();
               marcaCtrl.clear();
               valorCtrl.clear();
@@ -179,12 +175,30 @@ class _ListaPageState extends State<ListaPage> {
       filled: true,
       fillColor: Theme.of(context).cardColor,
       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
           ),
       labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
           ),
+    );
+  }
+
+  Future<void> salvarListaNoHistorico() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final listaCompleta = {
+      "mercado": mercadoCtrl.text,
+      "itens": itens,
+      "total": total,
+      "data": DateTime.now().toIso8601String(),
+    };
+
+    final listasJson = prefs.getStringList('listas_salvas') ?? [];
+    listasJson.add(jsonEncode(listaCompleta));
+    await prefs.setStringList('listas_salvas', listasJson);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Lista salva no histórico')),
     );
   }
 
@@ -282,6 +296,15 @@ class _ListaPageState extends State<ListaPage> {
               ],
             ),
             const SizedBox(height: 10),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.save),
+              label: const Text('Salvar no Histórico'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+              ),
+              onPressed: itens.isEmpty ? null : salvarListaNoHistorico,
+            ),
+            const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
                 itemCount: itens.length,
@@ -327,18 +350,5 @@ class _ListaPageState extends State<ListaPage> {
         ),
       ),
     );
-  }
-
-  Future<void> salvarListaAtual() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final listaCompleta = {
-      "mercado": mercadoCtrl.text,
-      "itens": itens,
-      "total": total,
-      "data": DateTime.now().toIso8601String(),
-    };
-
-    await prefs.setString('lista_atual', jsonEncode(listaCompleta));
   }
 }
