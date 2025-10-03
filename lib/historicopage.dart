@@ -43,6 +43,29 @@ class _HistoricoPageState extends State<HistoricoPage> {
     });
   }
 
+  void editarLista(Map<String, dynamic> listaOriginal, int index) async {
+    final resultado = await Navigator.pushNamed(
+      context,
+      '/lista',
+      arguments: {
+        'lista': listaOriginal,
+        'index': index,
+      },
+    );
+
+    if (resultado != null && resultado is Map<String, dynamic>) {
+      final prefs = await SharedPreferences.getInstance();
+      final listasJson = prefs.getStringList('listas_salvas') ?? [];
+
+      listasJson[index] = jsonEncode(resultado);
+      await prefs.setStringList('listas_salvas', listasJson);
+
+      setState(() {
+        historico[index] = resultado;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final titleStyle = Theme.of(context).textTheme.titleLarge;
@@ -69,16 +92,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                       borderRadius: BorderRadius.circular(12)),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      // 👉 Ao tocar, abre a ListaPage com os itens salvos
-                      Navigator.pushNamed(
-                        context,
-                        '/lista',
-                        arguments: (lista['itens'] as List)
-                            .map((e) => Map<String, dynamic>.from(e))
-                            .toList(),
-                      );
-                    },
+                    onTap: () => editarLista(lista, index),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-bool carregouArgumentos = false;
-
 class ListaPage extends StatefulWidget {
   const ListaPage({super.key});
 
@@ -20,23 +18,21 @@ class _ListaPageState extends State<ListaPage> {
 
   List<Map<String, dynamic>> itens = [];
   double total = 0;
+  int? indexEdicao;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!carregouArgumentos) {
-      final args = ModalRoute.of(context)?.settings.arguments;
-      if (args != null && args is List<Map<String, dynamic>>) {
-        for (var item in args) {
-          itens.add({
-            "produto": item['produto'],
-            "marca": '',
-            "valor": 0.0,
-            "quantidade": item['quantidade'],
-          });
-        }
-      }
-      carregouArgumentos = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is Map<String, dynamic>) {
+      final lista = args['lista'] as Map<String, dynamic>;
+      indexEdicao = args['index'] as int?;
+
+      mercadoCtrl.text = lista['mercado'] ?? '';
+      total = lista['total'] ?? 0;
+
+      final itensRecebidos = lista['itens'] as List;
+      itens = itensRecebidos.map((e) => Map<String, dynamic>.from(e)).toList();
     }
   }
 
@@ -194,12 +190,20 @@ class _ListaPageState extends State<ListaPage> {
     };
 
     final listasJson = prefs.getStringList('listas_salvas') ?? [];
-    listasJson.add(jsonEncode(listaCompleta));
+
+    if (indexEdicao != null) {
+      listasJson[indexEdicao!] = jsonEncode(listaCompleta);
+    } else {
+      listasJson.add(jsonEncode(listaCompleta));
+    }
+
     await prefs.setStringList('listas_salvas', listasJson);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Lista salva no histórico')),
     );
+
+    Navigator.pop(context, listaCompleta);
   }
 
   @override
@@ -301,6 +305,7 @@ class _ListaPageState extends State<ListaPage> {
               label: const Text('Salvar no Histórico'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Colors.black, // texto preto
               ),
               onPressed: itens.isEmpty ? null : salvarListaNoHistorico,
             ),
@@ -313,12 +318,15 @@ class _ListaPageState extends State<ListaPage> {
                   return Card(
                     color: Theme.of(context).cardColor,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 2,
                     margin: const EdgeInsets.symmetric(vertical: 6),
                     child: ListTile(
-                      leading: Icon(Icons.shopping_bag,
-                          color: Theme.of(context).colorScheme.primary),
+                      leading: Icon(
+                        Icons.shopping_bag,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       title: Text(
                         "${item['produto']} (${item['quantidade']}x) - ${item['marca']}",
                         style: textStyle,
@@ -331,8 +339,10 @@ class _ListaPageState extends State<ListaPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: Icon(Icons.edit,
-                                color: Theme.of(context).colorScheme.secondary),
+                            icon: Icon(
+                              Icons.edit,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
                             onPressed: () => editarItem(index),
                           ),
                           IconButton(
