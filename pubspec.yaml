@@ -20,13 +20,13 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
 
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: assets/icon.png
-
 flutter:
   uses-material-design: true
   assets:
     - assets/meu_logotipo.png
     - assets/ # Inclui todos os arquivos da pasta assets
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon.png

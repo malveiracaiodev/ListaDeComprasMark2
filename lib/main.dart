@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'homepage.dart';
-import 'listapreparadapage.dart' hide ListaProvider;
-import 'listapage.dart' hide ListaProvider;
+import 'listapreparadapage.dart';
 import 'historicopage.dart';
 import 'fundo_cosmico.dart';
 import 'listaprovider.dart';
+import 'listapage.dart'; // Certifique-se de importar sua ListaPage
 
 void main() {
   runApp(

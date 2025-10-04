@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:lista_de_compras/listaprovider.dart';
 
 class ListaPreparadaPage extends StatefulWidget {
   const ListaPreparadaPage({super.key});
@@ -34,10 +35,18 @@ class _ListaPreparadaPageState extends State<ListaPreparadaPage> {
     final produto = produtoCtrl.text.trim();
     final quantidade = int.tryParse(quantidadeCtrl.text) ?? 1;
 
-    if (produto.isEmpty) return;
+    if (produto.isEmpty || quantidade <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha os campos corretamente')),
+      );
+      return;
+    }
 
     final provider = Provider.of<ListaProvider>(context, listen: false);
-    provider.adicionarItemPreparado('$produto (${quantidade}x)');
+    provider.adicionarItemPreparado({
+      "produto": produto,
+      "quantidade": quantidade,
+    });
 
     produtoCtrl.clear();
     quantidadeCtrl.clear();
@@ -65,6 +74,10 @@ class _ListaPreparadaPageState extends State<ListaPreparadaPage> {
       '/comprando',
       arguments: {
         'index': null,
+        'lista': {
+          'mercado': '',
+          'itens': provider.listaComprando,
+        },
       },
     );
   }
@@ -134,7 +147,7 @@ class _ListaPreparadaPageState extends State<ListaPreparadaPage> {
                       leading: Icon(Icons.checklist,
                           color: Theme.of(context).colorScheme.primary),
                       title: Text(
-                        "${item} (1x)", // quantidade fixa por enquanto
+                        "${item['produto']} (${item['quantidade']}x)",
                         style: textStyle,
                       ),
                       trailing: IconButton(
@@ -150,29 +163,5 @@ class _ListaPreparadaPageState extends State<ListaPreparadaPage> {
         ),
       ),
     );
-  }
-}
-
-class ListaProvider extends ChangeNotifier {
-  final List<String> _listaPreparada = [];
-  final List<String> _listaComprando = [];
-
-  List<String> get listaPreparada => _listaPreparada;
-  List<String> get listaComprando => _listaComprando;
-
-  void adicionarItemPreparado(String item) {
-    _listaPreparada.add(item);
-    notifyListeners();
-  }
-
-  void removerItemPreparado(int index) {
-    _listaPreparada.removeAt(index);
-    notifyListeners();
-  }
-
-  void moverParaComprando() {
-    _listaComprando.addAll(_listaPreparada);
-    _listaPreparada.clear();
-    notifyListeners();
   }
 }

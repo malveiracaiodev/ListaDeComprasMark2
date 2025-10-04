@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:lista_de_compras/listaprovider.dart';
 
 class ListaPage extends StatefulWidget {
   const ListaPage({super.key});
@@ -28,10 +29,7 @@ class _ListaPageState extends State<ListaPage> {
       indexEdicao = args['index'] as int?;
 
       mercadoCtrl.text = lista['mercado'] ?? '';
-      setState(() {
-        provider.listaComprando =
-            List<Map<String, dynamic>>.from(lista['itens']);
-      });
+      provider.listaComprando = List<Map<String, dynamic>>.from(lista['itens']);
     }
   }
 
@@ -42,16 +40,20 @@ class _ListaPageState extends State<ListaPage> {
     final valor = double.tryParse(valorTexto) ?? 0;
     final quantidade = int.tryParse(quantidadeCtrl.text) ?? 1;
 
-    if (produto.isEmpty || valor <= 0) return;
+    if (produto.isEmpty || valor <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Preencha os campos obrigatórios corretamente')),
+      );
+      return;
+    }
 
     final provider = Provider.of<ListaProvider>(context, listen: false);
-    setState(() {
-      provider.listaComprando.add({
-        "produto": produto,
-        "marca": marca,
-        "valor": valor,
-        "quantidade": quantidade,
-      });
+    provider.listaComprando.add({
+      "produto": produto,
+      "marca": marca,
+      "valor": valor,
+      "quantidade": quantidade,
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -66,9 +68,7 @@ class _ListaPageState extends State<ListaPage> {
 
   void removerItem(int index) {
     final provider = Provider.of<ListaProvider>(context, listen: false);
-    setState(() {
-      provider.listaComprando.removeAt(index);
-    });
+    provider.listaComprando.removeAt(index);
   }
 
   void editarItem(int index) {
@@ -87,28 +87,15 @@ class _ListaPageState extends State<ListaPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: produtoCtrl,
-              decoration: campoEstilizado('Produto', Icons.shopping_cart),
-            ),
+            campoTexto(produtoCtrl, 'Produto', Icons.shopping_cart),
             const SizedBox(height: 8),
-            TextField(
-              controller: marcaCtrl,
-              decoration:
-                  campoEstilizado('Marca (opcional)', Icons.local_offer),
-            ),
+            campoTexto(marcaCtrl, 'Marca (opcional)', Icons.local_offer),
             const SizedBox(height: 8),
-            TextField(
-              controller: valorCtrl,
-              decoration: campoEstilizado('Valor', Icons.attach_money),
-              keyboardType: TextInputType.number,
-            ),
+            campoTexto(valorCtrl, 'Valor', Icons.attach_money,
+                tipo: TextInputType.number),
             const SizedBox(height: 8),
-            TextField(
-              controller: quantidadeCtrl,
-              decoration: campoEstilizado('Quantidade', Icons.numbers),
-              keyboardType: TextInputType.number,
-            ),
+            campoTexto(quantidadeCtrl, 'Quantidade', Icons.numbers,
+                tipo: TextInputType.number),
           ],
         ),
         actions: [
@@ -133,14 +120,12 @@ class _ListaPageState extends State<ListaPage> {
                 return;
               }
 
-              setState(() {
-                provider.listaComprando[index] = {
-                  "produto": novoProduto,
-                  "marca": novaMarca,
-                  "valor": novoValor,
-                  "quantidade": novaQtd,
-                };
-              });
+              provider.listaComprando[index] = {
+                "produto": novoProduto,
+                "marca": novaMarca,
+                "valor": novoValor,
+                "quantidade": novaQtd,
+              };
 
               Navigator.pop(context);
               produtoCtrl.clear();
@@ -169,13 +154,18 @@ class _ListaPageState extends State<ListaPage> {
     };
 
     final jsonLista = jsonEncode(listaCompleta);
-    provider.adicionarAoHistorico(jsonLista);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lista salva no histórico')),
-    );
-
-    Navigator.pop(context, listaCompleta);
+    try {
+      provider.adicionarAoHistorico(jsonLista);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lista salva no histórico')),
+      );
+      Navigator.pop(context, listaCompleta);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar lista: $e')),
+      );
+    }
   }
 
   InputDecoration campoEstilizado(String label, IconData icon) {
@@ -192,6 +182,16 @@ class _ListaPageState extends State<ListaPage> {
       labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
           ),
+    );
+  }
+
+  Widget campoTexto(
+      TextEditingController controller, String label, IconData icon,
+      {TextInputType? tipo}) {
+    return TextField(
+      controller: controller,
+      decoration: campoEstilizado(label, icon),
+      keyboardType: tipo,
     );
   }
 
@@ -221,7 +221,7 @@ class _ListaPageState extends State<ListaPage> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.edit, color: Colors.orangeAccent),
+                    const Icon(Icons.edit, color: Colors.orangeAccent),
                     const SizedBox(width: 6),
                     Text(
                       'Editando lista salva',
@@ -237,43 +237,25 @@ class _ListaPageState extends State<ListaPage> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: produtoCtrl,
-                    decoration: campoEstilizado('Produto', Icons.shopping_cart),
-                    style: textStyle,
-                  ),
-                ),
+                    child: campoTexto(
+                        produtoCtrl, 'Produto', Icons.shopping_cart)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: TextField(
-                    controller: marcaCtrl,
-                    decoration:
-                        campoEstilizado('Marca (opcional)', Icons.local_offer),
-                    style: textStyle,
-                  ),
-                ),
+                    child: campoTexto(
+                        marcaCtrl, 'Marca (opcional)', Icons.local_offer)),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: valorCtrl,
-                    decoration: campoEstilizado('Valor', Icons.attach_money),
-                    keyboardType: TextInputType.number,
-                    style: textStyle,
-                  ),
-                ),
+                    child: campoTexto(valorCtrl, 'Valor', Icons.attach_money,
+                        tipo: TextInputType.number)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: TextField(
-                    controller: quantidadeCtrl,
-                    decoration: campoEstilizado('Quantidade', Icons.numbers),
-                    keyboardType: TextInputType.number,
-                    style: textStyle,
-                  ),
-                ),
+                    child: campoTexto(
+                        quantidadeCtrl, 'Quantidade', Icons.numbers,
+                        tipo: TextInputType.number)),
               ],
             ),
             const SizedBox(height: 20),
@@ -283,9 +265,7 @@ class _ListaPageState extends State<ListaPage> {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.history),
                   label: const Text('Ver Histórico'),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/historico');
-                  },
+                  onPressed: () => Navigator.pushNamed(context, '/historico'),
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.add),
@@ -306,6 +286,7 @@ class _ListaPageState extends State<ListaPage> {
                   "Total: R\$ ${total.toStringAsFixed(2)}",
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
                       ),
                 ),
               ],
@@ -328,6 +309,7 @@ class _ListaPageState extends State<ListaPage> {
                 itemCount: provider.listaComprando.length,
                 itemBuilder: (context, index) {
                   final item = provider.listaComprando[index];
+                  final valorTotalItem = item['valor'] * item['quantidade'];
                   return Card(
                     color: Theme.of(context).cardColor,
                     shape: RoundedRectangleBorder(
@@ -345,7 +327,7 @@ class _ListaPageState extends State<ListaPage> {
                         style: textStyle,
                       ),
                       subtitle: Text(
-                        "R\$ ${(item['valor'] * item['quantidade']).toStringAsFixed(2)}",
+                        "R\$ ${valorTotalItem.toStringAsFixed(2)}",
                         style: textStyle,
                       ),
                       trailing: Row(
@@ -373,21 +355,5 @@ class _ListaPageState extends State<ListaPage> {
         ),
       ),
     );
-  }
-}
-
-class ListaProvider extends ChangeNotifier {
-  List<Map<String, dynamic>> _listaComprando = [];
-  List<String> historico = [];
-
-  List<Map<String, dynamic>> get listaComprando => _listaComprando;
-  set listaComprando(List<Map<String, dynamic>> value) {
-    _listaComprando = value;
-    notifyListeners();
-  }
-
-  void adicionarAoHistorico(String lista) {
-    historico.add(lista);
-    notifyListeners();
   }
 }
