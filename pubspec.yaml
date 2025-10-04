@@ -1,6 +1,6 @@
 name: lista_de_compras
 description: Um app simples para gerenciar listas de compras.
-publish_to: 'none'
+publish_to: 'none' # Este app não será publicado no pub.dev
 
 version: 1.0.0+1
 
@@ -10,10 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  provider: ^6.0.5
   shared_preferences: ^2.2.2
   intl: ^0.18.1
   cupertino_icons: ^1.0.6
-  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +29,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/meu_logotipo.png
+    - assets/ # Inclui todos os arquivos da pasta assets
