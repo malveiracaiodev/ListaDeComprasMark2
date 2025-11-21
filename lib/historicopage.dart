@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'listapage.dart';
+import 'listaprovider.dart';
+import 'package:provider/provider.dart';
 
 class HistoricoPage extends StatefulWidget {
   const HistoricoPage({super.key});
@@ -19,74 +22,60 @@ class _HistoricoPageState extends State<HistoricoPage> {
     carregarHistorico();
   }
 
-  void carregarHistorico() async {
+  Future<void> carregarHistorico() async {
     final prefs = await SharedPreferences.getInstance();
     final listasJson = prefs.getStringList('listas_salvas') ?? [];
-
-    final listasDecodificadas =
-        listasJson.map((json) => jsonDecode(json)).toList();
+    final listasDecodificadas = listasJson
+        .map((s) {
+          try {
+            return jsonDecode(s) as Map<String, dynamic>;
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((m) => m.isNotEmpty)
+        .toList();
 
     setState(() {
       historico = List<Map<String, dynamic>>.from(listasDecodificadas);
     });
   }
 
-  void excluirLista(int index) async {
+  Future<void> excluirLista(int index) async {
     final prefs = await SharedPreferences.getInstance();
     final listasJson = prefs.getStringList('listas_salvas') ?? [];
 
     if (index >= 0 && index < listasJson.length) {
       listasJson.removeAt(index);
       await prefs.setStringList('listas_salvas', listasJson);
-
       setState(() {
         historico.removeAt(index);
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lista excluída com sucesso')),
       );
     }
   }
 
-  void editarLista(Map<String, dynamic> listaOriginal, int index) async {
-    final resultado = await Navigator.pushNamed(
+  void reabrirLista(Map<String, dynamic> listaOriginal, int index) {
+    // Usa push com MaterialPageRoute e envia argumentos via settings
+    Navigator.push(
       context,
-      '/lista',
-      arguments: {
-        'lista': listaOriginal,
-        'index': index,
-      },
-    );
-
-    if (resultado != null && resultado is Map<String, dynamic>) {
-      final prefs = await SharedPreferences.getInstance();
-      final listasJson = prefs.getStringList('listas_salvas') ?? [];
-
-      if (index >= 0 && index < listasJson.length) {
-        listasJson[index] = jsonEncode(resultado);
-        await prefs.setStringList('listas_salvas', listasJson);
-
-        setState(() {
-          historico[index] = resultado;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lista atualizada com sucesso')),
-        );
+      MaterialPageRoute(
+        builder: (ctx) => const ListaPage(),
+        settings:
+            RouteSettings(arguments: {'lista': listaOriginal, 'index': index}),
+      ),
+    ).then((returned) {
+      // Se o usuário salvou/atualizou a lista, recarrega histórico
+      carregarHistorico();
+      // Se quiser também atualizar provider com a lista reaberta:
+      if (returned != null && returned is Map<String, dynamic>) {
+        final provider = Provider.of<ListaProvider>(context, listen: false);
+        provider.listaComprando =
+            List<Map<String, dynamic>>.from(returned['itens'] ?? []);
       }
-    }
-  }
-
-  void reutilizarLista(Map<String, dynamic> listaOriginal) {
-    Navigator.pushNamed(
-      context,
-      '/comprando',
-      arguments: {
-        'lista': listaOriginal,
-        'index': null,
-      },
-    );
+    });
   }
 
   @override
@@ -97,16 +86,20 @@ class _HistoricoPageState extends State<HistoricoPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Histórico de Listas')),
       body: historico.isEmpty
-          ? Center(
-              child: Text(
-                'Nenhuma lista salva',
-                style: bodyStyle,
-              ),
-            )
+          ? Center(child: Text('Nenhuma lista salva', style: bodyStyle))
           : ListView.builder(
               itemCount: historico.length,
               itemBuilder: (context, index) {
                 final lista = historico[index];
+                final itens = (lista['itens'] as List?) ?? [];
+                final total = (lista['total'] as num?)?.toDouble() ??
+                    itens.fold<double>(
+                        0,
+                        (sum, it) =>
+                            sum +
+                            ((it['valor'] as num? ?? 0) *
+                                    (it['quantidade'] as num? ?? 1))
+                                .toDouble());
                 return Card(
                   color: Theme.of(context).cardColor,
                   margin:
@@ -118,15 +111,11 @@ class _HistoricoPageState extends State<HistoricoPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          lista['mercado'] ?? 'Supermercado',
-                          style: titleStyle,
-                        ),
+                        Text(lista['mercado'] ?? 'Supermercado',
+                            style: titleStyle),
                         const SizedBox(height: 4),
-                        Text(
-                          "Total: R\$ ${lista['total'].toStringAsFixed(2)}",
-                          style: bodyStyle,
-                        ),
+                        Text("Total: R\$ ${total.toStringAsFixed(2)}",
+                            style: bodyStyle),
                         if (lista['data'] != null)
                           Text(
                             "Data: ${DateFormat('dd/MM/yyyy').format(DateTime.parse(lista['data']))}",
@@ -136,29 +125,26 @@ class _HistoricoPageState extends State<HistoricoPage> {
                         Text("Itens:",
                             style: bodyStyle?.copyWith(
                                 fontWeight: FontWeight.bold)),
-                        ...List<Widget>.from(
-                            (lista['itens'] as List).map((item) {
+                        ...itens.map<Widget>((item) {
+                          final valorItem = ((item['valor'] as num? ?? 0) *
+                                  (item['quantidade'] as num? ?? 1))
+                              .toDouble();
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Text(
-                              "- ${item['produto']} (${item['quantidade']}x) ${item['marca']} - R\$ ${(item['valor'] * item['quantidade']).toStringAsFixed(2)}",
+                              "- ${item['produto']} (${item['quantidade']}x) ${item['marca'] ?? ''} - R\$ ${valorItem.toStringAsFixed(2)}",
                               style: bodyStyle,
                             ),
                           );
-                        })),
+                        }).toList(),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.shopping_cart),
-                              tooltip: 'Continuar no modo de compra',
-                              onPressed: () => reutilizarLista(lista),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              tooltip: 'Editar lista',
-                              onPressed: () => editarLista(lista, index),
+                              tooltip: 'Reabrir lista',
+                              onPressed: () => reabrirLista(lista, index),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),

@@ -5,7 +5,7 @@ import 'listapreparadapage.dart';
 import 'historicopage.dart';
 import 'fundo_cosmico.dart';
 import 'listaprovider.dart';
-import 'listapage.dart'; // Certifique-se de importar sua ListaPage
+import 'listapage.dart';
 
 void main() {
   runApp(
@@ -53,11 +53,21 @@ class ListaComprasApp extends StatelessWidget {
           foregroundColor: Color(0xFF0D1B2A),
         ),
       ),
-      home: const FundoCosmico(child: HomePage()),
+      initialRoute: '/',
       routes: {
-        '/preparar': (context) =>
-            const FundoCosmico(child: ListaPreparadaPage()),
+        // Home
+        '/': (context) => const FundoCosmico(child: HomePage()),
+
+        // Preparar lista
+        '/preparar': (context) => const FundoCosmico(child: ListaPreparadaPage()),
+
+        // Página de compra (nome canonical: '/comprando')
         '/comprando': (context) => const FundoCosmico(child: ListaPage()),
+
+        // Alias para compatibilidade: se outras partes do app usam '/lista'
+        '/lista': (context) => const FundoCosmico(child: ListaPage()),
+
+        // Histórico
         '/historico': (context) => const FundoCosmico(child: HistoricoPage()),
       },
     );

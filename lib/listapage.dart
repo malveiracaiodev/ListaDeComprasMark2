@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // ✅ Correção aqui
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lista_de_compras/listaprovider.dart';
 
 class ListaPage extends StatefulWidget {
@@ -25,12 +25,14 @@ class _ListaPageState extends State<ListaPage> {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args != null && args is Map<String, dynamic>) {
-      final provider = Provider.of<ListaProvider>(context, listen: false);
-      final lista = args['lista'] as Map<String, dynamic>;
-      indexEdicao = args['index'] as int?;
-
-      mercadoCtrl.text = lista['mercado'] ?? '';
-      provider.listaComprando = List<Map<String, dynamic>>.from(lista['itens']);
+      final lista = args['lista'] as Map<String, dynamic>?;
+      final index = args['index'] as int?;
+      if (lista != null) {
+        mercadoCtrl.text = lista['mercado'] ?? '';
+        Provider.of<ListaProvider>(context, listen: false).listaComprando =
+            List<Map<String, dynamic>>.from(lista['itens']);
+        indexEdicao = index;
+      }
     }
   }
 
@@ -41,25 +43,22 @@ class _ListaPageState extends State<ListaPage> {
     final valor = double.tryParse(valorTexto) ?? 0;
     final quantidade = int.tryParse(quantidadeCtrl.text) ?? 1;
 
-    if (produto.isEmpty || valor <= 0) {
+    if (produto.isEmpty || valor <= 0 || quantidade <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Preencha os campos obrigatórios corretamente')),
+        const SnackBar(content: Text('Preencha os campos corretamente')),
       );
       return;
     }
 
     final provider = Provider.of<ListaProvider>(context, listen: false);
-    provider.listaComprando.add({
-      "produto": produto,
-      "marca": marca,
-      "valor": valor,
-      "quantidade": quantidade,
+    setState(() {
+      provider.adicionarItem({
+        "produto": produto,
+        "marca": marca,
+        "valor": valor,
+        "quantidade": quantidade,
+      });
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Item "$produto" adicionado')),
-    );
 
     produtoCtrl.clear();
     marcaCtrl.clear();
@@ -69,7 +68,9 @@ class _ListaPageState extends State<ListaPage> {
 
   void removerItem(int index) {
     final provider = Provider.of<ListaProvider>(context, listen: false);
-    provider.listaComprando.removeAt(index);
+    setState(() {
+      provider.removerItem(index);
+    });
   }
 
   void editarItem(int index) {
@@ -89,12 +90,9 @@ class _ListaPageState extends State<ListaPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             campoTexto(produtoCtrl, 'Produto', Icons.shopping_cart),
-            const SizedBox(height: 8),
             campoTexto(marcaCtrl, 'Marca (opcional)', Icons.local_offer),
-            const SizedBox(height: 8),
             campoTexto(valorCtrl, 'Valor', Icons.attach_money,
                 tipo: TextInputType.number),
-            const SizedBox(height: 8),
             campoTexto(quantidadeCtrl, 'Quantidade', Icons.numbers,
                 tipo: TextInputType.number),
           ],
@@ -112,27 +110,28 @@ class _ListaPageState extends State<ListaPage> {
                   double.tryParse(valorCtrl.text.replaceAll(',', '.')) ?? 0;
               final novaQtd = int.tryParse(quantidadeCtrl.text) ?? 1;
 
-              if (novoProduto.isEmpty || novoValor <= 0) {
+              if (novoProduto.isEmpty || novoValor <= 0 || novaQtd <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content:
-                          Text('Preencha os campos obrigatórios corretamente')),
+                      content: Text('Preencha os campos corretamente')),
                 );
                 return;
               }
 
-              provider.listaComprando[index] = {
-                "produto": novoProduto,
-                "marca": novaMarca,
-                "valor": novoValor,
-                "quantidade": novaQtd,
-              };
+              setState(() {
+                provider.editarItem(index, {
+                  "produto": novoProduto,
+                  "marca": novaMarca,
+                  "valor": novoValor,
+                  "quantidade": novaQtd,
+                });
+              });
 
-              Navigator.pop(context);
               produtoCtrl.clear();
               marcaCtrl.clear();
               valorCtrl.clear();
               quantidadeCtrl.clear();
+              Navigator.pop(context);
             },
             child: const Text('Salvar'),
           ),
@@ -143,7 +142,6 @@ class _ListaPageState extends State<ListaPage> {
 
   void salvarListaNoHistorico() async {
     final provider = Provider.of<ListaProvider>(context, listen: false);
-
     final listaCompleta = {
       "mercado": mercadoCtrl.text,
       "itens": provider.listaComprando,
@@ -158,45 +156,29 @@ class _ListaPageState extends State<ListaPage> {
     final prefs = await SharedPreferences.getInstance();
     final listasJson = prefs.getStringList('listas_salvas') ?? [];
 
-    try {
-      if (indexEdicao != null &&
-          indexEdicao! >= 0 &&
-          indexEdicao! < listasJson.length) {
-        listasJson[indexEdicao!] = jsonLista;
-        await prefs.setStringList('listas_salvas', listasJson);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lista atualizada no histórico')),
-        );
-      } else {
-        listasJson.add(jsonLista);
-        await prefs.setStringList('listas_salvas', listasJson);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lista salva no histórico')),
-        );
-      }
-
-      Navigator.pop(context, listaCompleta);
-    } catch (e) {
+    if (indexEdicao != null &&
+        indexEdicao! >= 0 &&
+        indexEdicao! < listasJson.length) {
+      listasJson[indexEdicao!] = jsonLista;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar lista: $e')),
+        const SnackBar(content: Text('Lista atualizada no histórico')),
+      );
+    } else {
+      listasJson.add(jsonLista);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lista salva no histórico')),
       );
     }
+
+    await prefs.setStringList('listas_salvas', listasJson);
+    Navigator.pop(context, listaCompleta);
   }
 
   InputDecoration campoEstilizado(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      hintText: 'Digite $label...',
-      prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      prefixIcon: Icon(icon),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      filled: true,
-      fillColor: Theme.of(context).cardColor,
-      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
-          ),
-      labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
     );
   }
 
@@ -223,29 +205,8 @@ class _ListaPageState extends State<ListaPage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: mercadoCtrl,
-              decoration: campoEstilizado('Supermercado', Icons.store),
-            ),
-            if (indexEdicao != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit, color: Colors.orangeAccent),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Editando lista salva',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.orangeAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
+            campoTexto(mercadoCtrl, 'Supermercado', Icons.store),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -254,8 +215,7 @@ class _ListaPageState extends State<ListaPage> {
                         produtoCtrl, 'Produto', Icons.shopping_cart)),
                 const SizedBox(width: 8),
                 Expanded(
-                    child: campoTexto(
-                        marcaCtrl, 'Marca (opcional)', Icons.local_offer)),
+                    child: campoTexto(marcaCtrl, 'Marca', Icons.local_offer)),
               ],
             ),
             const SizedBox(height: 8),
@@ -288,30 +248,11 @@ class _ListaPageState extends State<ListaPage> {
               ],
             ),
             const SizedBox(height: 20),
-            const Divider(height: 30, thickness: 1),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.attach_money,
-                    color: Theme.of(context).colorScheme.primary, size: 28),
-                const SizedBox(width: 6),
-                Text(
-                  "Total: R\$ ${total.toStringAsFixed(2)}",
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ],
-            ),
+            Text("Total: R\$ ${total.toStringAsFixed(2)}"),
             const SizedBox(height: 10),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
               label: const Text('Salvar no Histórico'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                foregroundColor: Colors.black,
-              ),
               onPressed: provider.listaComprando.isEmpty
                   ? null
                   : salvarListaNoHistorico,
@@ -323,42 +264,20 @@ class _ListaPageState extends State<ListaPage> {
                 itemBuilder: (context, index) {
                   final item = provider.listaComprando[index];
                   final valorTotalItem = item['valor'] * item['quantidade'];
-                  return Card(
-                    color: Theme.of(context).cardColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.shopping_bag,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      title: Text(
-                        "${item['produto']} (${item['quantidade']}x) - ${item['marca']}",
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      subtitle: Text(
-                        "R\$ ${valorTotalItem.toStringAsFixed(2)}",
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.edit,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
-                            onPressed: () => editarItem(index),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => removerItem(index),
-                          ),
-                        ],
-                      ),
+                  return ListTile(
+                    title: Text(
+                        "${item['produto']} (${item['quantidade']}x) - ${item['marca']}"),
+                    subtitle: Text("R\$ ${valorTotalItem.toStringAsFixed(2)}"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => editarItem(index)),
+                        IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => removerItem(index)),
+                      ],
                     ),
                   );
                 },

@@ -11,13 +11,15 @@ class ListaProvider extends ChangeNotifier {
   final List<String> _historico = [];
 
   // Getters
-  List<Map<String, dynamic>> get listaPreparada => _listaPreparada;
-  List<Map<String, dynamic>> get listaComprando => _listaComprando;
+  List<Map<String, dynamic>> get listaPreparada =>
+      List.unmodifiable(_listaPreparada);
+  List<Map<String, dynamic>> get listaComprando =>
+      List.unmodifiable(_listaComprando);
   List<String> get historico => List.unmodifiable(_historico);
 
   // Setter com notificação
   set listaComprando(List<Map<String, dynamic>> novaLista) {
-    _listaComprando = novaLista;
+    _listaComprando = List<Map<String, dynamic>>.from(novaLista);
     notifyListeners();
   }
 
@@ -25,6 +27,14 @@ class ListaProvider extends ChangeNotifier {
   void adicionarAoHistorico(String listaJson) {
     _historico.add(listaJson);
     notifyListeners();
+  }
+
+  // Atualiza uma lista existente no histórico
+  void atualizarHistorico(int index, String novaListaJson) {
+    if (index >= 0 && index < _historico.length) {
+      _historico[index] = novaListaJson;
+      notifyListeners();
+    }
   }
 
   // Limpa a lista atual
