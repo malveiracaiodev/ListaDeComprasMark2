@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'listapage.dart';
 import 'listaprovider.dart';
 import 'package:provider/provider.dart';
+import 'pagina_base.dart';
 
 class HistoricoPage extends StatefulWidget {
   const HistoricoPage({super.key});
@@ -58,7 +59,6 @@ class _HistoricoPageState extends State<HistoricoPage> {
   }
 
   void reabrirLista(Map<String, dynamic> listaOriginal, int index) {
-    // Usa push com MaterialPageRoute e envia argumentos via settings
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -67,9 +67,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
             RouteSettings(arguments: {'lista': listaOriginal, 'index': index}),
       ),
     ).then((returned) {
-      // Se o usuário salvou/atualizou a lista, recarrega histórico
       carregarHistorico();
-      // Se quiser também atualizar provider com a lista reaberta:
       if (returned != null && returned is Map<String, dynamic>) {
         final provider = Provider.of<ListaProvider>(context, listen: false);
         provider.listaComprando =
@@ -80,12 +78,19 @@ class _HistoricoPageState extends State<HistoricoPage> {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.titleLarge;
-    final bodyStyle = Theme.of(context).textTheme.bodyMedium;
+    final titleStyle = const TextStyle(
+      color: Colors.cyan,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+    );
+    final bodyStyle = const TextStyle(
+      color: Colors.cyan,
+      fontSize: 14,
+    );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Histórico de Listas')),
-      body: historico.isEmpty
+    return PaginaBase(
+      titulo: "Histórico de Listas",
+      conteudo: historico.isEmpty
           ? Center(child: Text('Nenhuma lista salva', style: bodyStyle))
           : ListView.builder(
               itemCount: historico.length,
@@ -101,7 +106,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                                     (it['quantidade'] as num? ?? 1))
                                 .toDouble());
                 return Card(
-                  color: Theme.of(context).cardColor,
+                  color: Colors.grey[900],
                   margin:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(
@@ -123,7 +128,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                           ),
                         const SizedBox(height: 8),
                         Text("Itens:",
-                            style: bodyStyle?.copyWith(
+                            style: bodyStyle.copyWith(
                                 fontWeight: FontWeight.bold)),
                         ...itens.map<Widget>((item) {
                           final valorItem = ((item['valor'] as num? ?? 0) *
@@ -141,14 +146,19 @@ class _HistoricoPageState extends State<HistoricoPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.shopping_cart),
-                              tooltip: 'Reabrir lista',
+                            ElevatedButton.icon(
+                              style: estiloBotao(),
+                              icon: const Icon(Icons.shopping_cart,
+                                  color: Colors.cyan),
+                              label: const Text("Reabrir"),
                               onPressed: () => reabrirLista(lista, index),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              tooltip: 'Excluir lista',
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              style: estiloBotao(),
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.redAccent),
+                              label: const Text("Excluir"),
                               onPressed: () => excluirLista(index),
                             ),
                           ],

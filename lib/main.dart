@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'homepage.dart';
-import 'listapreparadapage.dart';
 import 'historicopage.dart';
-import 'fundo_cosmico.dart';
 import 'listaprovider.dart';
 import 'listapage.dart';
 
@@ -24,51 +22,46 @@ class ListaComprasApp extends StatelessWidget {
     return MaterialApp(
       title: 'Lista de Compras Cósmica',
       themeMode: ThemeMode.dark,
-      darkTheme: ThemeData.dark(
-        useMaterial3: true,
-      ).copyWith(
+      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D1B2A),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.white,
+          seedColor: Colors.cyan,
           brightness: Brightness.dark,
         ),
         textTheme: const TextTheme(
           titleLarge: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 22,
-            color: Colors.white,
+            color: Colors.cyan,
           ),
           bodyMedium: TextStyle(
             fontSize: 16,
-            color: Colors.white70,
+            color: Colors.cyan,
           ),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0D1B2A),
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.cyan,
         ),
         cardColor: const Color(0xFF1B263B),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF0D1B2A),
+          backgroundColor: Colors.grey,
+          foregroundColor: Colors.cyan,
         ),
       ),
       initialRoute: '/',
       routes: {
         // Home
-        '/': (context) => const FundoCosmico(child: HomePage()),
+        '/': (context) => const HomePage(),
 
-        // Preparar lista
-        '/preparar': (context) => const FundoCosmico(child: ListaPreparadaPage()),
+        // Página de compra
+        '/comprando': (context) => const ListaPage(),
 
-        // Página de compra (nome canonical: '/comprando')
-        '/comprando': (context) => const FundoCosmico(child: ListaPage()),
-
-        // Alias para compatibilidade: se outras partes do app usam '/lista'
-        '/lista': (context) => const FundoCosmico(child: ListaPage()),
+        // Alias para compatibilidade
+        '/lista': (context) => const ListaPage(),
 
         // Histórico
-        '/historico': (context) => const FundoCosmico(child: HistoricoPage()),
+        '/historico': (context) => const HistoricoPage(),
       },
     );
   }

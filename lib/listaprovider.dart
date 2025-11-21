@@ -1,40 +1,29 @@
 import 'package:flutter/material.dart';
 
 class ListaProvider extends ChangeNotifier {
-  // Lista de itens preparados antes da compra
-  final List<Map<String, dynamic>> _listaPreparada = [];
-
   // Lista atual de itens sendo comprados
   List<Map<String, dynamic>> _listaComprando = [];
 
-  // Histórico de listas salvas (em formato JSON)
+  // Histórico em memória (opcional — você já persiste via SharedPreferences)
   final List<String> _historico = [];
 
-  // Getters
-  List<Map<String, dynamic>> get listaPreparada =>
-      List.unmodifiable(_listaPreparada);
+  // Getters (imutáveis)
   List<Map<String, dynamic>> get listaComprando =>
       List.unmodifiable(_listaComprando);
   List<String> get historico => List.unmodifiable(_historico);
 
-  // Setter com notificação
+  // Setter com notificação (para carregar lista reaberta)
   set listaComprando(List<Map<String, dynamic>> novaLista) {
     _listaComprando = List<Map<String, dynamic>>.from(novaLista);
     notifyListeners();
   }
 
-  // Adiciona uma nova lista ao histórico
-  void adicionarAoHistorico(String listaJson) {
-    _historico.add(listaJson);
-    notifyListeners();
-  }
-
-  // Atualiza uma lista existente no histórico
-  void atualizarHistorico(int index, String novaListaJson) {
-    if (index >= 0 && index < _historico.length) {
-      _historico[index] = novaListaJson;
-      notifyListeners();
-    }
+  // Total calculado
+  double get total {
+    return _listaComprando.fold<double>(
+      0,
+      (sum, item) => sum + (item['valor'] ?? 0) * (item['quantidade'] ?? 1),
+    );
   }
 
   // Limpa a lista atual
@@ -43,7 +32,23 @@ class ListaProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Remove item da lista atual
+  // Adiciona novo item
+  void adicionarItem(Map<String, dynamic> item) {
+    _listaComprando.add(item);
+    notifyListeners();
+  }
+
+  // Insere item em posição específica (suporta desfazer exclusão)
+  void inserirItem(int index, Map<String, dynamic> item) {
+    if (index < 0 || index > _listaComprando.length) {
+      _listaComprando.add(item);
+    } else {
+      _listaComprando.insert(index, item);
+    }
+    notifyListeners();
+  }
+
+  // Remove item
   void removerItem(int index) {
     if (index >= 0 && index < _listaComprando.length) {
       _listaComprando.removeAt(index);
@@ -51,7 +56,7 @@ class ListaProvider extends ChangeNotifier {
     }
   }
 
-  // Atualiza um item da lista atual
+  // Edita item
   void editarItem(int index, Map<String, dynamic> novoItem) {
     if (index >= 0 && index < _listaComprando.length) {
       _listaComprando[index] = novoItem;
@@ -59,36 +64,16 @@ class ListaProvider extends ChangeNotifier {
     }
   }
 
-  // Adiciona um novo item à lista atual
-  void adicionarItem(Map<String, dynamic> item) {
-    _listaComprando.add(item);
+  // Histórico em memória (opcional)
+  void adicionarAoHistorico(String listaJson) {
+    _historico.add(listaJson);
     notifyListeners();
   }
 
-  // Adiciona item à lista preparada
-  void adicionarItemPreparado(Map<String, dynamic> item) {
-    _listaPreparada.add(item);
-    notifyListeners();
-  }
-
-  // Remove item da lista preparada
-  void removerItemPreparado(int index) {
-    if (index >= 0 && index < _listaPreparada.length) {
-      _listaPreparada.removeAt(index);
+  void atualizarHistorico(int index, String novaListaJson) {
+    if (index >= 0 && index < _historico.length) {
+      _historico[index] = novaListaJson;
       notifyListeners();
     }
-  }
-
-  // Move itens da lista preparada para a lista comprando
-  void moverParaComprando() {
-    _listaComprando.clear();
-    _listaComprando.addAll(_listaPreparada.map((item) => {
-          "produto": item['produto'],
-          "marca": "",
-          "valor": 0.0,
-          "quantidade": item['quantidade'],
-        }));
-    _listaPreparada.clear();
-    notifyListeners();
   }
 }
